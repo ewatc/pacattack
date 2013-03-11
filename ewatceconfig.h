@@ -1,0 +1,13 @@
+#ifndef _EWATCECONFIG_H
+#define _EWATCECONFIG_H
+
+#define EWATC_WNDCAPTION "Awesome Game"
+#define EWATCE_LOGFILENAME "ewatclog.txt"
+
+#define EWATCE_SCREEN_WIDTH        640
+#define EWATCE_SCREEN_HEIGHT       480
+#define EWATCE_SCREEN_BITDEPTH     32
+#define EWATCE_SCREEN_PARAMS       (SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_ASYNCBLIT)
+
+#endif
+
