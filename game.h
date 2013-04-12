@@ -49,6 +49,7 @@ struct Rect
 struct Entity
 {
 	EntityType type;
+	int guid;
 	Location loc;
 	int velocity;
 	Direction dir;
@@ -70,13 +71,21 @@ struct MapTile
 struct Map
 {
 	MapTile tile[MAX_MAP_ROWS][MAX_MAP_COLUMNS];
+	Entity entity[MAX_NUM_ENTITIES];
 };
 
 struct PlayingField
 {
-	Entity entities[MAX_NUM_ENTITIES];
 	Map map;
 };
+
+struct GameInfo
+{
+	PlayingField field;
+	int playerId;
+};
+
+
 
 void StartGame();
 
