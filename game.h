@@ -4,11 +4,13 @@
 
 enum
 {
+	MAP_HEIGHT_IN_PIXELS = 480,
+	MAP_WIDTH_IN_PIXELS = 640,
 	MAP_TILE_WIDTH = 64,
 	MAP_TILE_HEIGHT = 64,
 	MAX_NUM_ENTITIES = 128,
-	MAX_MAP_COLUMNS = (640/64),
-	MAX_MAP_ROWS = (480/64)
+	MAX_MAP_COLUMNS = (MAP_WIDTH_IN_PIXELS/MAP_TILE_WIDTH),
+	MAX_MAP_ROWS = (MAP_HEIGHT_IN_PIXELS/MAP_TILE_HEIGHT)
 };
 
 enum EntityType
@@ -57,15 +59,15 @@ struct Entity
 	EntityState state;
 	
 	// TODO Rendering
+	// animation state == EntityState + Direction
+	// frame number
+	int renderFrameNumber;
 };
 
 struct MapTile
 {
 	int tileId;
-	bool top;
-	bool bottom;
-	bool left;
-	bool right;
+	bool side[4];
 };
 
 struct Map

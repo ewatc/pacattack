@@ -64,3 +64,12 @@ SDL_Surface* ewatceGetScreenSurface()
     return gScreenSurface;
 }
 
+unsigned int ewatceRGB2Color(unsigned char red,
+                             unsigned char green,
+                             unsigned char blue)
+{
+    return SDL_MapRGB(ewatceGetScreenSurface()->format,
+                      red,
+                      green,
+                      blue);
+}

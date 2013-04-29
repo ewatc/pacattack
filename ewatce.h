@@ -10,6 +10,9 @@ bool ewatceInitialize();
 void ewatceShutdown();
 
 SDL_Surface* ewatceGetScreenSurface();
+unsigned int ewatceRGB2Color(unsigned char red,
+                             unsigned char green,
+                             unsigned char blue);
 
 
 #endif
