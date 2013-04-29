@@ -10,6 +10,9 @@ bool GameInputEvent(const SDL_Event &event);
 bool GameLogic();
 void GameRender();
 
+void loadGameMap();
+void loadGameImages();
+
 void initGameInfo();
 Entity CreatePlayer(int locX, int locY, int velocity, Direction dir);
 Entity CreateDot(int locX, int locY);
@@ -44,6 +47,10 @@ bool GameInit()
 	AddEntityToMap(gGame.field.map, player);
 
 	// TODO load images
+	loadGameImages();
+	
+	// TODO load map
+	loadGameMap();
 
     return true;
 }
@@ -94,39 +101,46 @@ bool GameLogic()
 	// - collision walls, entity movement
 	for (int i=0; i<MAX_NUM_ENTITIES; ++i) {
 		Entity *entity = &gGame.field.map.entity[i];
+		// Checking if entity is moving
 		if (entity->velocity > 0) {
 			// based on direction check if there is a wall
-            // TODO determine x and y
+			// in the direction we want to go
             int xTile = entity->loc.y / MAP_TILE_HEIGHT;
             int yTile = entity->loc.x / MAP_TILE_WIDTH;
-			if (!gGame.field.map.tile[yTile][xTile].side[entity->dir]) {
-				// no wall
-				switch (entity->dir) {
-				case DIRECTION_UP:
+
+			switch (entity->dir) {
+			case DIRECTION_UP:
+				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_UP)) {
 					entity->loc.y -= entity->velocity;
 					if (entity->loc.y < 0) {
 						entity->loc.y = 0;
 					}
-					break;
-				case DIRECTION_LEFT:
+				}
+				break;
+			case DIRECTION_LEFT:
+				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_LEFT)) {
 					entity->loc.x -= entity->velocity;
 					if (entity->loc.x < 0) {
 						entity->loc.x = 0;
 					}
-					break;
-				case DIRECTION_RIGHT:
+				}
+				break;
+			case DIRECTION_RIGHT:
+				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_RIGHT)) {
 					entity->loc.x -= entity->velocity;
 					if (entity->loc.x > MAP_WIDTH_IN_PIXELS) {
 						entity->loc.y = MAP_WIDTH_IN_PIXELS - 1;
 					}
-					break;
-				case DIRECTION_DOWN:
+				}
+				break;
+			case DIRECTION_DOWN:
+				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_DOWN)) {
 					entity->loc.y -= entity->velocity;
 					if (entity->loc.y > MAP_HEIGHT_IN_PIXELS) {
 						entity->loc.y = MAP_HEIGHT_IN_PIXELS - 1;
 					}
-					break;
 				}
+				break;
 			}
 		}
 	}
@@ -156,6 +170,28 @@ void GameRender()
 	SDL_FillRect(ewatceGetScreenSurface(), &rect, color);
 
 	// tiles
+	for (int y=0; y< MAX_MAP_ROWS; ++y) {
+		for (int x=0; x< MAX_MAP_COLUMNS; ++x) {
+			// draw tile
+			SDL_Rect srcRect;
+			SDL_Rect dstRect;
+			
+			srcRect.x = gGame.field.map.tile[y][x].tileId * MAP_TILE_WIDTH;
+			srcRect.y = 0;
+			srcRect.w = MAP_TILE_WIDTH;
+			srcRect.h = MAP_TILE_HEIGHT;
+			
+			dstRect.x = x * MAP_TILE_WIDTH;
+			dstRect.y = y * MAP_TILE_HEIGHT;
+			dstRect.w = MAP_TILE_WIDTH;
+			dstRect.h = MAP_TILE_HEIGHT;
+			
+			SDL_BlitSurface(gGame.images[IMAGE_TILES],
+							&srcRect,
+							ewatceGetScreenSurface(),
+			                &dstRect);
+		}
+	}
 
 	// pacman, entity
 	// - debug draw hit boxes
@@ -213,14 +249,11 @@ void initGameInfo()
 		gGame.field.map.entity[i].type = ENTITY_TYPE_UNKNOWN;
 	}
 
-	// TODO: Load Map
+	// Init Map
 	for (int row=0; row<MAX_MAP_ROWS; ++row) {
 		for (int column; column<MAX_MAP_COLUMNS; ++column) {
 			gGame.field.map.tile[row][column].tileId = 0;
-			gGame.field.map.tile[row][column].side[0] = 1;
-			gGame.field.map.tile[row][column].side[1] = 1;
-			gGame.field.map.tile[row][column].side[2] = 1;
-			gGame.field.map.tile[row][column].side[3] = 1;
+			gGame.field.map.tile[row][column].side = 0;
 		}
 	}
 
@@ -313,3 +346,48 @@ Entity RemoveEntityFromMap(Map &map, int id)
 	return entity;
 }
 
+
+void loadGameMap()
+{	
+	gGame.field.map.tile[0][0].tileId = 1;
+	gGame.field.map.tile[0][0].side = WALL_UP|WALL_LEFT;
+	gGame.field.map.tile[0][1].tileId = 4;
+	gGame.field.map.tile[0][1].side = WALL_UP|WALL_DOWN;
+	gGame.field.map.tile[0][2].tileId = 6;
+	gGame.field.map.tile[0][2].side = WALL_UP;
+	gGame.field.map.tile[0][3].tileId = 9;
+	gGame.field.map.tile[0][3].side = WALL_UP|WALL_RIGHT;
+	
+	gGame.field.map.tile[1][0].tileId = 2;
+	gGame.field.map.tile[1][0].side = WALL_LEFT|WALL_RIGHT;
+	gGame.field.map.tile[1][1].tileId = 11;
+	gGame.field.map.tile[1][1].side = WALL_UP|WALL_LEFT|WALL_DOWN|WALL_RIGHT;
+	gGame.field.map.tile[1][2].tileId = 2;
+	gGame.field.map.tile[1][2].side = WALL_RIGHT|WALL_LEFT;
+	gGame.field.map.tile[1][3].tileId = 2;
+	gGame.field.map.tile[1][3].side = WALL_RIGHT|WALL_LEFT;
+	
+	gGame.field.map.tile[2][0].tileId = 3;
+	gGame.field.map.tile[2][0].side = WALL_LEFT;
+	gGame.field.map.tile[2][1].tileId = 4;
+	gGame.field.map.tile[2][1].side = WALL_UP|WALL_DOWN;
+	gGame.field.map.tile[2][2].tileId = 5;
+	gGame.field.map.tile[2][2].side = WALL_RIGHT|WALL_DOWN;
+	gGame.field.map.tile[2][3].tileId = 2;
+	gGame.field.map.tile[2][3].side = WALL_RIGHT|WALL_LEFT;
+	
+	gGame.field.map.tile[3][0].tileId = 10;
+	gGame.field.map.tile[3][0].side = WALL_DOWN|WALL_LEFT;
+	gGame.field.map.tile[3][1].tileId = 4;
+	gGame.field.map.tile[3][1].side = WALL_UP|WALL_DOWN;
+	gGame.field.map.tile[3][2].tileId = 4;
+	gGame.field.map.tile[3][2].side = WALL_UP|WALL_DOWN;
+	gGame.field.map.tile[3][3].tileId = 5;
+	gGame.field.map.tile[3][3].side = WALL_RIGHT|WALL_DOWN;
+}
+
+void loadGameImages()
+{
+	gGame.images[IMAGE_TILES] = SDL_LoadBMP("tiles.bmp");
+	gGame.images[IMAGE_PACMAN] = 0;
+}

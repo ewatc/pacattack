@@ -2,15 +2,23 @@
 #ifndef _EWATC_GAME
 #define _EWATC_GAME
 
+#include <SDL.h>
+
 enum
 {
-	MAP_HEIGHT_IN_PIXELS = 480,
-	MAP_WIDTH_IN_PIXELS = 640,
+	MAP_HEIGHT_IN_PIXELS = 64*4, // FIX ME TODO
+	MAP_WIDTH_IN_PIXELS = 64*4,
 	MAP_TILE_WIDTH = 64,
 	MAP_TILE_HEIGHT = 64,
 	MAX_NUM_ENTITIES = 128,
 	MAX_MAP_COLUMNS = (MAP_WIDTH_IN_PIXELS/MAP_TILE_WIDTH),
 	MAX_MAP_ROWS = (MAP_HEIGHT_IN_PIXELS/MAP_TILE_HEIGHT)
+};
+
+enum {
+	IMAGE_TILES = 0,
+	IMAGE_PACMAN = 1,
+	IMAGE_MAX
 };
 
 enum EntityType
@@ -64,10 +72,17 @@ struct Entity
 	int renderFrameNumber;
 };
 
+enum {
+	WALL_UP		= 0x01,
+	WALL_DOWN	= 0x02,
+	WALL_LEFT	= 0x04,
+	WALL_RIGHT	= 0x08
+};
+
 struct MapTile
 {
 	int tileId;
-	bool side[4];
+	unsigned int side;
 };
 
 struct Map
@@ -85,6 +100,7 @@ struct GameInfo
 {
 	PlayingField field;
 	int playerId;
+	SDL_Surface *images[IMAGE_MAX];
 };
 
 
