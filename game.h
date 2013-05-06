@@ -18,6 +18,7 @@ enum
 enum {
 	IMAGE_TILES = 0,
 	IMAGE_PACMAN = 1,
+	IMAGE_DOT = 2,
 	IMAGE_MAX
 };
 
@@ -89,6 +90,7 @@ struct Map
 {
 	MapTile tile[MAX_MAP_ROWS][MAX_MAP_COLUMNS];
 	Entity entity[MAX_NUM_ENTITIES];
+	Entity player;
 };
 
 struct PlayingField

@@ -11,15 +11,18 @@ bool GameLogic();
 void GameRender();
 
 void loadGameMap();
-void loadGameImages();
+bool loadGameImages();
 
 void initGameInfo();
 Entity CreatePlayer(int locX, int locY, int velocity, Direction dir);
 Entity CreateDot(int locX, int locY);
 void AddEntityToMap(Map &map, const Entity &entity);
 Entity RemoveEntityFromMap(Map &map, int id);
+void AddPlayerToMap(Map &map, const Entity &entity);
+Entity RemovePlayerFromMap(Map &map, int id);
 
 Entity* FindEntityInMap(Map &map, int guid);
+
 
 GameInfo gGame;
 
@@ -38,18 +41,18 @@ bool GameInit()
 {
 	initGameInfo();
 
-    Entity player = CreatePlayer(0, // loc x
-						  0, // loc y
-						0, // velocity
-						DIRECTION_RIGHT);
+    Entity player = CreatePlayer(32, // loc x
+								 32, // loc y
+								 0, // velocity
+								 DIRECTION_RIGHT);
 
 	gGame.playerId = player.guid;
-	AddEntityToMap(gGame.field.map, player);
+	AddPlayerToMap(gGame.field.map, player);
 
-	// TODO load images
-	loadGameImages();
+	if (!loadGameImages()) {
+		return false;
+	}
 	
-	// TODO load map
 	loadGameMap();
 
     return true;
@@ -64,8 +67,13 @@ void GameLoop()
 {
     bool timeToQuit = false;
     SDL_Event event;
+	unsigned int lastTick;
+    unsigned int currentTick;
 
     while (!timeToQuit) {
+		unsigned int sleepMs;
+		lastTick = SDL_GetTicks();
+		
         // Handle SDL events, and Input
         while (SDL_PollEvent(&event) && !timeToQuit) {
             switch (event.type) {
@@ -90,6 +98,13 @@ void GameLoop()
 		}
 
         // Sleep until time to run again
+		currentTick = SDL_GetTicks();
+
+		//wait the appropriate amount of time
+		sleepMs = (1000/30) - (currentTick - lastTick);
+		if(sleepMs > 0) {
+			//SDL_Delay(sleepMs);
+		}
     }
 }
 
@@ -99,12 +114,37 @@ bool GameLogic()
 
 	// Movement
 	// - collision walls, entity movement
-	for (int i=0; i<MAX_NUM_ENTITIES; ++i) {
-		Entity *entity = &gGame.field.map.entity[i];
+	// TODO only checking player moving
+	for (int i=0; i<1 /* MAX_NUM_ENTITIES */; ++i) {
+		Entity *entity = &gGame.field.map.player;
+		//Entity *entity = &gGame.field.map.entity[i];
 		// Checking if entity is moving
 		if (entity->velocity > 0) {
-			// based on direction check if there is a wall
-			// in the direction we want to go
+			// movement
+			switch (entity->dir) {
+			case DIRECTION_UP:
+			case DIRECTION_DOWN:
+				entity->loc.y += entity->velocity;
+				
+				if (entity->loc.y < 0) {
+					entity->loc.y = 0;
+				} else if (entity->loc.y > MAP_HEIGHT_IN_PIXELS) {
+					entity->loc.y = MAP_HEIGHT_IN_PIXELS - 1;
+				}
+				break;
+			case DIRECTION_LEFT:
+			case DIRECTION_RIGHT:
+				entity->loc.x += entity->velocity;
+				
+				if (entity->loc.x < 0) {
+					entity->loc.x = 0;
+				} else if (entity->loc.x > MAP_WIDTH_IN_PIXELS) {
+					entity->loc.x = MAP_WIDTH_IN_PIXELS - 1;
+				}
+				break;
+			}
+#if 0
+			// wall collision
             int xTile = entity->loc.y / MAP_TILE_HEIGHT;
             int yTile = entity->loc.x / MAP_TILE_WIDTH;
 
@@ -112,22 +152,16 @@ bool GameLogic()
 			case DIRECTION_UP:
 				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_UP)) {
 					entity->loc.y -= entity->velocity;
-					if (entity->loc.y < 0) {
-						entity->loc.y = 0;
-					}
 				}
 				break;
 			case DIRECTION_LEFT:
 				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_LEFT)) {
-					entity->loc.x -= entity->velocity;
-					if (entity->loc.x < 0) {
-						entity->loc.x = 0;
-					}
+					entity->loc.x += entity->velocity;
 				}
 				break;
 			case DIRECTION_RIGHT:
 				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_RIGHT)) {
-					entity->loc.x -= entity->velocity;
+					entity->loc.x += entity->velocity;
 					if (entity->loc.x > MAP_WIDTH_IN_PIXELS) {
 						entity->loc.y = MAP_WIDTH_IN_PIXELS - 1;
 					}
@@ -135,13 +169,14 @@ bool GameLogic()
 				break;
 			case DIRECTION_DOWN:
 				if (!(gGame.field.map.tile[yTile][xTile].side & WALL_DOWN)) {
-					entity->loc.y -= entity->velocity;
+					entity->loc.y += entity->velocity;
 					if (entity->loc.y > MAP_HEIGHT_IN_PIXELS) {
 						entity->loc.y = MAP_HEIGHT_IN_PIXELS - 1;
 					}
 				}
 				break;
 			}
+#endif
 		}
 	}
 
@@ -149,6 +184,9 @@ bool GameLogic()
 	// - between entities, ie player and dots
 	//		- consequences, player eating dot, increase score
 
+	LOGDBG("Player is located at: %d,%d",
+	        gGame.field.map.player.loc.x,
+			gGame.field.map.player.loc.y);
 
 	return timeToQuit;
 }
@@ -167,9 +205,11 @@ void GameRender()
     color = ewatceRGB2Color(0, 255, 0); // green
 
 	// clear the background
+#if 0
 	SDL_FillRect(ewatceGetScreenSurface(), &rect, color);
-
+#endif
 	// tiles
+#if 0
 	for (int y=0; y< MAX_MAP_ROWS; ++y) {
 		for (int x=0; x< MAX_MAP_COLUMNS; ++x) {
 			// draw tile
@@ -186,15 +226,47 @@ void GameRender()
 			dstRect.w = MAP_TILE_WIDTH;
 			dstRect.h = MAP_TILE_HEIGHT;
 			
-			SDL_BlitSurface(gGame.images[IMAGE_TILES],
-							&srcRect,
-							ewatceGetScreenSurface(),
-			                &dstRect);
+			if (SDL_BlitSurface(gGame.images[IMAGE_TILES],
+							    &srcRect,
+							    ewatceGetScreenSurface(),
+			                    &dstRect) != 0) {
+				LOGERR("Unable to blit, error=[%s]", SDL_GetError());
+			}
 		}
 	}
+#endif
 
 	// pacman, entity
 	// - debug draw hit boxes
+	if (gGame.field.map.player.type != ENTITY_TYPE_UNKNOWN) {
+		SDL_Rect srcRect;
+		SDL_Rect dstRect;
+
+		srcRect.x = gGame.field.map.player.renderFrameNumber * 32;
+		srcRect.y = 0;
+		srcRect.w = 32;
+		srcRect.h = 32;
+		
+		dstRect.x = gGame.field.map.player.loc.x - 16;
+		dstRect.y = gGame.field.map.player.loc.y - 16;
+		dstRect.w = 32;
+		dstRect.h = 32;
+		
+		if (SDL_BlitSurface(gGame.images[IMAGE_PACMAN],
+							&srcRect,
+							ewatceGetScreenSurface(),
+							&dstRect) != 0) {
+			LOGERR("Unable to blit, error=[%s]", SDL_GetError());
+		}
+		
+		gGame.field.map.player.renderFrameNumber++;
+	}
+	
+	//gGame.field.map.player.type // image type
+	//gGame.field.map.entity[i].renderFrameNumber // frame number
+	
+	
+	SDL_Flip(ewatceGetScreenSurface());
 }
 
 bool GameInputEvent(const SDL_Event &event)
@@ -206,27 +278,32 @@ bool GameInputEvent(const SDL_Event &event)
     case SDL_KEYDOWN:
         switch (event.key.keysym.sym) {
         case SDLK_LEFT:
-			player = FindEntityInMap(gGame.field.map, gGame.playerId);
+			player = &gGame.field.map.player;
 			player->dir = DIRECTION_LEFT;
-			player->velocity = 1;
+			player->velocity = -1;
+			LOGDBG("Player moving LEFT");
 			break;
         case SDLK_RIGHT:
-			player = FindEntityInMap(gGame.field.map, gGame.playerId);
+			player = &gGame.field.map.player;
 			player->dir = DIRECTION_RIGHT;
 			player->velocity = 1;
+			LOGDBG("Player moving RIGHT");
 			break;
         case SDLK_UP:
-			player = FindEntityInMap(gGame.field.map, gGame.playerId);
+			player = &gGame.field.map.player;
 			player->dir = DIRECTION_UP;
-			player->velocity = 1;
+			player->velocity = -1;
+			LOGDBG("Player moving UP");
 			break;
         case SDLK_DOWN:
-			player = FindEntityInMap(gGame.field.map, gGame.playerId);
+			player = &gGame.field.map.player;
 			player->dir = DIRECTION_DOWN;
 			player->velocity = 1;
+			LOGDBG("Player moving DOWN");
             break;
         case SDLK_ESCAPE:
             timeToQuit = true;
+			LOGDBG("Player trying to quit");
             break;
         default:
             // do nothing
@@ -248,6 +325,8 @@ void initGameInfo()
 	for (int i=0; i<MAX_NUM_ENTITIES; ++i) {
 		gGame.field.map.entity[i].type = ENTITY_TYPE_UNKNOWN;
 	}
+	
+	gGame.field.map.player.type = ENTITY_TYPE_UNKNOWN;
 
 	// Init Map
 	for (int row=0; row<MAX_MAP_ROWS; ++row) {
@@ -274,6 +353,7 @@ Entity CreateEntity(int locX, int locY, int velocity, Direction dir)
 	entity.hitBox.width = 32;
 	entity.hitBox.height = 32;
 	entity.guid = guid++;
+	entity.renderFrameNumber = 0;
 
 	return entity;
 }
@@ -346,6 +426,23 @@ Entity RemoveEntityFromMap(Map &map, int id)
 	return entity;
 }
 
+void AddPlayerToMap(Map &map, const Entity &entity)
+{
+	map.player = entity;
+}
+
+Entity RemovePlayerFromMap(Map &map, int id)
+{
+	Entity entity;
+
+	entity = map.player;
+	
+	// reset map player
+	map.player.type = ENTITY_TYPE_UNKNOWN;
+
+	// error
+	return entity;
+}
 
 void loadGameMap()
 {	
@@ -386,8 +483,19 @@ void loadGameMap()
 	gGame.field.map.tile[3][3].side = WALL_RIGHT|WALL_DOWN;
 }
 
-void loadGameImages()
+bool loadGameImages()
 {
 	gGame.images[IMAGE_TILES] = SDL_LoadBMP("tiles.bmp");
-	gGame.images[IMAGE_PACMAN] = 0;
+	if (gGame.images[IMAGE_TILES] == NULL) {
+		LOGERR("Unable to load file [%s]", "tiles.bmp");
+		return false;
+	}
+	
+	gGame.images[IMAGE_PACMAN] = SDL_LoadBMP("pacman.bmp");
+	if (gGame.images[IMAGE_PACMAN] == NULL) {
+		LOGERR("Unable to load file[%s]", "pacman.bmp");
+		return false;
+	}
+	
+	return true;
 }
