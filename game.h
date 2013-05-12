@@ -12,7 +12,10 @@ enum
 	MAP_TILE_HEIGHT = 64,
 	MAX_NUM_ENTITIES = 128,
 	MAX_MAP_COLUMNS = (MAP_WIDTH_IN_PIXELS/MAP_TILE_WIDTH),
-	MAX_MAP_ROWS = (MAP_HEIGHT_IN_PIXELS/MAP_TILE_HEIGHT)
+	MAX_MAP_ROWS = (MAP_HEIGHT_IN_PIXELS/MAP_TILE_HEIGHT),
+
+    MAP_TILE_WALL_WIDTH = 16,
+    MAP_TILE_WALL_HEIGHT = 16
 };
 
 enum {
@@ -49,12 +52,21 @@ struct Location
 	int y;
 };
 
+struct Movement
+{
+    Direction dir;
+    int velocity;
+};
+
 struct Rect
 {
 	int top;
 	int left;
 	int width;
 	int height;
+
+    Rect(int top, int left, int width, int height) : top(top), left(left), width(width), height(height) {}
+    Rect() : top(0), left(0), width(0), height(0) {}
 };
 
 struct Entity
@@ -62,8 +74,8 @@ struct Entity
 	EntityType type;
 	int guid;
 	Location loc;
-	int velocity;
-	Direction dir;
+    Movement move;
+    Movement pendingMove;
 	Rect hitBox;
 	EntityState state;
 	
@@ -71,6 +83,7 @@ struct Entity
 	// animation state == EntityState + Direction
 	// frame number
 	int renderFrameNumber;
+    int renderFrames;
 };
 
 enum {
