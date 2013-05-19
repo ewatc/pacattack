@@ -3,6 +3,7 @@
 
 
 static SDL_Surface* gScreenSurface;
+static TTF_Font* gDefaultFont;
 
 bool ewatceInitialize()
 {
@@ -37,18 +38,32 @@ bool ewatceInitialize()
 
     // Initialize TTF Support
     if (TTF_Init() == -1) {
-        LOGCRT("TTF_Init failed, error=[%]", TTF_GetError());
+        LOGCRT("TTF_Init failed, error=[%s]", TTF_GetError());
+        return false;
+    }
+
+    gDefaultFont = TTF_OpenFont(EWATCE_DEFAULT_FONT_FILE, EWATCE_DEFAULT_FONT_SIZE);
+    if(!gDefaultFont) {
+        LOGCRT("TTF_OpenFont failed, file=[%s] error=[%s]",
+               EWATCE_DEFAULT_FONT_FILE,
+               TTF_GetError());
         return false;
     }
 
     // Set Window Caption
-    SDL_WM_SetCaption(EWATC_WNDCAPTION, NULL);
+    SDL_WM_SetCaption(EWATCE_WNDCAPTION, NULL);
 
     return true;
 }
 
 void ewatceShutdown()
 {
+    // Close default font
+    if (gDefaultFont) {
+        TTF_CloseFont(gDefaultFont);
+        gDefaultFont = NULL;
+    }
+
     // Shutdown TTF Support
     TTF_Quit();
 
@@ -72,4 +87,9 @@ unsigned int ewatceRGB2Color(unsigned char red,
                       red,
                       green,
                       blue);
+}
+
+TTF_Font* ewatceGetDefaultFont()
+{
+    return gDefaultFont;
 }

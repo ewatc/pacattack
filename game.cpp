@@ -24,7 +24,11 @@ Entity RemovePlayerFromMap(Map &map, int id);
 bool CheckCollisionWithWall(const Map &map, int locX, int locY);
 bool CheckCollisionWithWall(const Map &map, const Rect &cBox);
 
+void UpdateEntityMovement(const Map &map, Entity &entity);
+
 Entity* FindEntityInMap(Map &map, int guid);
+
+void RenderUI();
 
 
 GameInfo gGame;
@@ -72,10 +76,13 @@ void GameLoop()
     SDL_Event event;
 	unsigned int lastTick;
     unsigned int currentTick;
+    unsigned int startTimeMs = SDL_GetTicks();
 
     while (!timeToQuit) {
-		unsigned int sleepMs;
+        int sleepMs;
 		lastTick = SDL_GetTicks();
+
+        gGame.stats.runningTimeMs = lastTick - startTimeMs;
 		
         // Handle SDL events, and Input
         while (SDL_PollEvent(&event) && !timeToQuit) {
@@ -106,7 +113,7 @@ void GameLoop()
 		//wait the appropriate amount of time
 		sleepMs = (1000/30) - (currentTick - lastTick);
 		if(sleepMs > 0) {
-			//SDL_Delay(sleepMs);
+			SDL_Delay(sleepMs);
 		}
     }
 }
@@ -117,121 +124,19 @@ bool GameLogic()
 
 	// Movement
 	// - collision walls, entity movement
-	// TODO only checking player moving
-	for (int i=0; i<1 /* MAX_NUM_ENTITIES */; ++i) {
-		Entity *entity = &gGame.field.map.player;
-		//Entity *entity = &gGame.field.map.entity[i];
-		// Checking if entity is moving
-		if (entity->move.velocity != 0) {
-            bool hitWall = false;
-            bool changeDirections = false;
 
-			// movement
-			switch (entity->move.dir) {
-			case DIRECTION_UP:
-			case DIRECTION_DOWN:
-                entity->loc.y += entity->move.velocity;
+    // first check against the player
+    UpdateEntityMovement(gGame.field.map, gGame.field.map.player);
 
-                hitWall = CheckCollisionWithWall(gGame.field.map, Rect(entity->loc.x - 16, entity->loc.y - 16, 32, 32));
-                if (hitWall) {
-                    // collided with wall, move player back
-                    LOGDBG("Entity %d hit U/D wall @ %dx%d",
-                           entity->guid,
-                           entity->loc.x,
-                           entity->loc.y);
-
-                    entity->loc.y -= entity->move.velocity;
-
-                    entity->move.velocity = 0;
-                }
-
-                // Only allow changing movement when in the middle of the row if new direction is left or right
-                if (entity->pendingMove.dir != DIRECTION_UP && entity->pendingMove.dir != DIRECTION_DOWN) {
-                    if ((entity->loc.y % MAP_TILE_HEIGHT) == (MAP_TILE_HEIGHT / 2)) {
-                        if (!hitWall) {
-                            // Check to make sure going in the new direction would not hit a wall
-                            // before changing it.
-                            hitWall = CheckCollisionWithWall(gGame.field.map,
-                                                             Rect(entity->loc.x - 16 + entity->pendingMove.velocity, entity->loc.y - 16, 32, 32));
-                            if (!hitWall) {
-                                changeDirections = true;
-                            }
-
-                        }
-                    }
-                } else {
-                    // always allow switching going back and forth
-                    changeDirections = true;
-                }
-
-                if (changeDirections) {
-                    LOGDBG("Entity %d changing movement dir %d velocity %d",
-                           entity->guid,
-                           entity->move.dir,
-                           entity->move.velocity);
-
-                    entity->move = entity->pendingMove;
-                }
-				break;
-			case DIRECTION_LEFT:
-			case DIRECTION_RIGHT:
-                entity->loc.x += entity->move.velocity;
-
-                hitWall = CheckCollisionWithWall(gGame.field.map, Rect(entity->loc.x - 16, entity->loc.y - 16, 32, 32));
-                if (hitWall) {
-                    // collided with wall, move player back
-                    LOGDBG("Entity %d hit L/R wall @ %dx%d",
-                           entity->guid,
-                           entity->loc.x,
-                           entity->loc.y);
-
-                    entity->loc.x -= entity->move.velocity;
-
-                    entity->move.velocity = 0;
-                }
-
-                // Only allow changing movement when in the middle of the column if new direction is up or down
-                if (entity->pendingMove.dir != DIRECTION_LEFT && entity->pendingMove.dir != DIRECTION_RIGHT) {
-                    if ((entity->loc.x % MAP_TILE_WIDTH) == (MAP_TILE_WIDTH / 2)) {
-                        if (!hitWall) {
-                            // Check to make sure going in the new direction would not hit a wall
-                            // before changing it.
-                            hitWall = CheckCollisionWithWall(gGame.field.map,
-                                                             Rect(entity->loc.x - 16, entity->loc.y - 16 + entity->pendingMove.velocity, 32, 32));
-                            if (!hitWall) {
-                                changeDirections = true;
-                            }
-                        }
-                    }
-                } else {
-                    // always allow switching going up and down
-                    changeDirections = true;
-                }
-
-                if (changeDirections) {
-                    LOGDBG("Entity %d changing movement dir %d velocity %d",
-                           entity->guid,
-                           entity->move.dir,
-                           entity->move.velocity);
-
-                    entity->move = entity->pendingMove;
-                }
-                break;
-			}
-		} else {
-            // start moving if needed
-            LOGDBG("Entity %d changing movement dir %d velocity %d",
-                   entity->guid,
-                   entity->move.dir,
-                   entity->move.velocity);
-
-            entity->move = entity->pendingMove;
-        }
+    // second check against the rest of the entities
+	for (int i=0; i< MAX_NUM_ENTITIES; ++i) {
+        UpdateEntityMovement(gGame.field.map, gGame.field.map.entity[i]);
 	}
 
 	// collision checking
 	// - between entities, ie player and dots
 	//		- consequences, player eating dot, increase score
+    // TODO
 
 	LOGDBG("Player is located at: %d,%d",
 	        gGame.field.map.player.loc.x,
@@ -247,8 +152,8 @@ void GameRender()
 
 	rect.x = 0;
 	rect.y = 0;
-	rect.w = MAP_WIDTH_IN_PIXELS;
-	rect.h = MAP_HEIGHT_IN_PIXELS;
+	rect.w = EWATCE_SCREEN_WIDTH;
+	rect.h = EWATCE_SCREEN_HEIGHT;
 
     // Get color in surface format
     color = ewatceRGB2Color(0, 255, 0); // green
@@ -320,10 +225,10 @@ void GameRender()
             gGame.field.map.player.renderFrameNumber = 0;
         }
 	}
-	
-	//gGame.field.map.player.type // image type
-	//gGame.field.map.entity[i].renderFrameNumber // frame number
-	
+
+    // Render the UI
+    RenderUI();
+
 	
 	SDL_Flip(ewatceGetScreenSurface());
 }
@@ -338,22 +243,22 @@ bool GameInputEvent(const SDL_Event &event)
         switch (event.key.keysym.sym) {
         case SDLK_LEFT:
 			player->pendingMove.dir = DIRECTION_LEFT;
-			player->pendingMove.velocity = -1;
+			player->pendingMove.velocity = -1 * VELOCITY_FACTOR;
 			LOGDBG("Player moving LEFT");
 			break;
         case SDLK_RIGHT:
 			player->pendingMove.dir = DIRECTION_RIGHT;
-			player->pendingMove.velocity = 1;
+			player->pendingMove.velocity = 1 * VELOCITY_FACTOR;
 			LOGDBG("Player moving RIGHT");
 			break;
         case SDLK_UP:
 			player->pendingMove.dir = DIRECTION_UP;
-			player->pendingMove.velocity = -1;
+			player->pendingMove.velocity = -1 * VELOCITY_FACTOR;
 			LOGDBG("Player moving UP");
 			break;
         case SDLK_DOWN:
 			player->pendingMove.dir = DIRECTION_DOWN;
-			player->pendingMove.velocity = 1;
+			player->pendingMove.velocity = 1 * VELOCITY_FACTOR;
 			LOGDBG("Player moving DOWN");
             break;
         case SDLK_ESCAPE:
@@ -391,7 +296,8 @@ void initGameInfo()
 		}
 	}
 
-	// TODO do more
+	// Init stats
+    memset(&gGame.stats, 0, sizeof(gGame.stats));
 }
 
 Entity CreateEntity(int locX, int locY, int velocity, Direction dir)
@@ -627,3 +533,161 @@ bool CheckCollisionWithWall(const Map &map, const Rect &cBox)
     return false;
 }
 
+void UpdateEntityMovement(const Map &map, Entity &entity)
+{
+    // Checking if entity is moving
+    if (entity.move.velocity != 0) {
+        bool hitWall = false;
+        bool changeDirections = false;
+
+        // movement
+        switch (entity.move.dir) {
+        case DIRECTION_UP:
+        case DIRECTION_DOWN:
+            entity.loc.y += entity.move.velocity;
+
+            hitWall = CheckCollisionWithWall(map, Rect(entity.loc.x - 16, entity.loc.y - 16, 32, 32));
+            if (hitWall) {
+                // collided with wall, move player back
+                LOGDBG("Entity %d hit U/D wall @ %dx%d",
+                       entity.guid,
+                       entity.loc.x,
+                       entity.loc.y);
+
+                entity.loc.y -= entity.move.velocity;
+
+                entity.move.velocity = 0;
+            }
+
+            // Only allow changing movement when in the middle of the row if new direction is left or right
+            if (entity.pendingMove.dir != DIRECTION_UP && entity.pendingMove.dir != DIRECTION_DOWN) {
+                if ((entity.loc.y % MAP_TILE_HEIGHT) == (MAP_TILE_HEIGHT / 2)) {
+                    if (!hitWall) {
+                        // Check to make sure going in the new direction would not hit a wall
+                        // before changing it.
+                        hitWall = CheckCollisionWithWall(gGame.field.map,
+                                                         Rect(entity.loc.x - 16 + entity.pendingMove.velocity, entity.loc.y - 16, 32, 32));
+                        if (!hitWall) {
+                            changeDirections = true;
+                        }
+
+                    }
+                }
+            } else {
+                // always allow switching going back and forth
+                changeDirections = true;
+            }
+
+            if (changeDirections) {
+                LOGDBG("Entity %d changing movement dir %d velocity %d",
+                       entity.guid,
+                       entity.move.dir,
+                       entity.move.velocity);
+
+                entity.move = entity.pendingMove;
+            }
+            break;
+        case DIRECTION_LEFT:
+        case DIRECTION_RIGHT:
+            entity.loc.x += entity.move.velocity;
+
+            hitWall = CheckCollisionWithWall(gGame.field.map, Rect(entity.loc.x - 16, entity.loc.y - 16, 32, 32));
+            if (hitWall) {
+                // collided with wall, move player back
+                LOGDBG("Entity %d hit L/R wall @ %dx%d",
+                       entity.guid,
+                       entity.loc.x,
+                       entity.loc.y);
+
+                entity.loc.x -= entity.move.velocity;
+
+                entity.move.velocity = 0;
+            }
+
+            // Only allow changing movement when in the middle of the column if new direction is up or down
+            if (entity.pendingMove.dir != DIRECTION_LEFT && entity.pendingMove.dir != DIRECTION_RIGHT) {
+                if ((entity.loc.x % MAP_TILE_WIDTH) == (MAP_TILE_WIDTH / 2)) {
+                    if (!hitWall) {
+                        // Check to make sure going in the new direction would not hit a wall
+                        // before changing it.
+                        hitWall = CheckCollisionWithWall(gGame.field.map,
+                                                         Rect(entity.loc.x - 16, entity.loc.y - 16 + entity.pendingMove.velocity, 32, 32));
+                        if (!hitWall) {
+                            changeDirections = true;
+                        }
+                    }
+                }
+            } else {
+                // always allow switching going up and down
+                changeDirections = true;
+            }
+
+            if (changeDirections) {
+                LOGDBG("Entity %d changing movement dir %d velocity %d",
+                       entity.guid,
+                       entity.move.dir,
+                       entity.move.velocity);
+
+                entity.move = entity.pendingMove;
+            }
+            break;
+        }
+    } else {
+        // start moving if needed
+        LOGDBG("Entity %d changing movement dir %d velocity %d",
+               entity.guid,
+               entity.move.dir,
+               entity.move.velocity);
+
+        entity.move = entity.pendingMove;
+    }
+}
+
+void RenderUI()
+{
+    SDL_Surface *textSurface;
+    SDL_Color textColor;
+    SDL_Rect dstRect;
+
+    // Render text using this color
+    textColor.r = 245;
+    textColor.g = 245;
+    textColor.b = 245;
+
+    // Render text on temporary surface
+    textSurface = TTF_RenderText_Solid(ewatceGetDefaultFont(), "AwesomeText", textColor);
+
+    dstRect.x = MAP_WIDTH_IN_PIXELS + 10;
+    dstRect.y = 0;
+    dstRect.w = 200;
+    dstRect.h = 200;
+
+    // Blit that temporary surface with text on to the main surface
+    if (SDL_BlitSurface(textSurface,
+                        NULL, // no cropping of source
+                        ewatceGetScreenSurface(),
+                        &dstRect) != 0) {
+        LOGERR("Unable to blit, error=[%s]", SDL_GetError());
+    }
+    SDL_FreeSurface(textSurface);
+
+
+    // Render debug information
+    char temp[128];
+    snprintf(temp, sizeof(temp),
+             "Game Time: %d.%01d s",
+             gGame.stats.runningTimeMs/1000,
+             gGame.stats.runningTimeMs%1000/100);
+    textSurface = TTF_RenderText_Solid(ewatceGetDefaultFont(), temp, textColor);
+
+    dstRect.y = 200;
+
+    // Blit that temporary surface with text on to the main surface
+    if (SDL_BlitSurface(textSurface,
+                        NULL, // no cropping of source
+                        ewatceGetScreenSurface(),
+                        &dstRect) != 0) {
+        LOGERR("Unable to blit, error=[%s]", SDL_GetError());
+    }
+    SDL_FreeSurface(textSurface);
+}

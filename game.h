@@ -15,7 +15,9 @@ enum
 	MAX_MAP_ROWS = (MAP_HEIGHT_IN_PIXELS/MAP_TILE_HEIGHT),
 
     MAP_TILE_WALL_WIDTH = 16,
-    MAP_TILE_WALL_HEIGHT = 16
+    MAP_TILE_WALL_HEIGHT = 16,
+
+    VELOCITY_FACTOR = 2
 };
 
 enum {
@@ -111,10 +113,16 @@ struct PlayingField
 	Map map;
 };
 
+struct GameStats
+{
+    unsigned int runningTimeMs;
+};
+
 struct GameInfo
 {
 	PlayingField field;
 	int playerId;
+    GameStats stats;
 	SDL_Surface *images[IMAGE_MAX];
 };
 
