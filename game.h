@@ -17,7 +17,9 @@ enum
     MAP_TILE_WALL_WIDTH = 16,
     MAP_TILE_WALL_HEIGHT = 16,
 
-    VELOCITY_FACTOR = 2
+    VELOCITY_FACTOR = 2,
+
+    ANIMATION_TIME = 200
 };
 
 enum {
@@ -86,6 +88,7 @@ struct Entity
 	// frame number
 	int renderFrameNumber;
     int renderFrames;
+    int renderFrameStartMs;
 };
 
 enum {

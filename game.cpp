@@ -219,8 +219,14 @@ void GameRender()
 							&dstRect) != 0) {
 			LOGERR("Unable to blit, error=[%s]", SDL_GetError());
 		}
-		
-		gGame.field.map.player.renderFrameNumber++;
+
+        int currTimeMs = SDL_GetTicks();
+        int timeDiffMs = currTimeMs - gGame.field.map.player.renderFrameStartMs;
+        if (timeDiffMs >= ANIMATION_TIME) {
+            ++gGame.field.map.player.renderFrameNumber;
+            gGame.field.map.player.renderFrameStartMs = currTimeMs;
+        }
+
         if (gGame.field.map.player.renderFrameNumber >= gGame.field.map.player.renderFrames) {
             gGame.field.map.player.renderFrameNumber = 0;
         }
@@ -317,6 +323,7 @@ Entity CreateEntity(int locX, int locY, int velocity, Direction dir)
 	entity.guid = guid++;
 	entity.renderFrameNumber = 0;
     entity.renderFrames = 0;
+    entity.renderFrameStartMs = 0;
 
 	return entity;
 }
